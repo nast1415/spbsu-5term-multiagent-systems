@@ -9,12 +9,16 @@ public class RouteHelper {
     private int[][] distances;
     private List<Pair<Integer, Integer>> routes;
 
-    public RouteHelper(int citiesAmount, int[][] roadMap, List<Pair<Integer, Integer>> allRoutes) {
+    private int petrolPrice;
+
+    public RouteHelper(int citiesAmount, int[][] roadMap, List<Pair<Integer, Integer>> allRoutes,
+                       int currentPetrolPrice) {
         distances = roadMap;
         routes = allRoutes;
+        petrolPrice = currentPetrolPrice;
         int maxInt = 10000;
 
-        // Floyd–Warshall algorithm for finding shortest paths in a weighted graph
+        // Floyd–Warshall algorithm for finding shortest paths in1 a weighted graph
         for (int k = 0; k < citiesAmount; k++)
             for (int i = 0; i < citiesAmount; i++)
                 for (int j = 0; j < citiesAmount; j++)
@@ -26,10 +30,23 @@ public class RouteHelper {
         return distances[departurePoint][destinationPoint];
     }
 
+    public int getPetrolPrice() {
+        return petrolPrice;
+    }
+
     // Helper function for agent to get information about what route is better minimizing total distance traveled
-    public ArrayList<Integer> getOptimalRoute(int agentNumber) {
+    public OptimalDestination<Integer, Integer, ArrayList<Integer>> getOptimalRoute(int agentNumber) {
+        System.out.println("---------------------------");
+        System.out.println("Start calculating best complex route for agent with id = " + agentNumber);
+        System.out.println("---------------------------");
+        int optimalDistanceLength = 0;
         int numberOfRoutes = routes.size();
-        int optimalDistanceLength = 10000;
+        // Basic optimal summary distances length is sum of all routes
+        for (Pair<Integer, Integer> pair : routes) {
+            optimalDistanceLength += distances[pair.getF()][pair.getS()];
+        }
+        // Basic optimal current route for given agent is his route
+        int optimalCurrentDistance = distances[routes.get(agentNumber - 1).getF()][routes.get(agentNumber - 1).getS()];;
 
         ArrayList<Integer> optimalPassengers = new ArrayList<>();
 
@@ -57,29 +74,26 @@ public class RouteHelper {
                 //System.out.println("Order array for this case: ");
 
                 // Use helper function calculateComplexDistance for finding optimal route from all possible
-                ArrayList<Integer> bestResults = calculateComplexDistance(agentNumber, currentPassengers);
-                System.out.println("For current passengers: " + currentPassengers + " best results are: " + bestResults);
+                OptimalDestination<Integer, Integer, ArrayList<Integer>> bestResults =
+                        calculateComplexDistance(agentNumber, currentPassengers);
+                //System.out.println("For current passengers: " + currentPassengers + " best results are: " + bestResults);
                 // First int of result is an optimal distance length
-                int currentOptimalDistance = bestResults.get(0);
+                int summaryOptimalDistance = bestResults.getSummaryRoutesLength();
 
                 // Compare current optimal distance with new calculated distance and if it is longer than replace it
                 // with new calculated distance length
-                if (currentOptimalDistance < optimalDistanceLength) {
-                    optimalDistanceLength = currentOptimalDistance;
-                    optimalPassengers = bestResults;
+                if (summaryOptimalDistance < optimalDistanceLength) {
+                    optimalDistanceLength = summaryOptimalDistance;
+                    optimalCurrentDistance = bestResults.getCurrentComplexRouteLength();
+                    optimalPassengers = bestResults.getPassengersIdList();
                 }
             }
         }
-
-        System.out.println("------------------------------------");
-        System.out.println("For passenger with id=" + agentNumber + " best route length = " + optimalDistanceLength +
-                ", and best passengers are: ");
-        System.out.println(optimalPassengers);
-
-        return optimalPassengers;
+        return new OptimalDestination<>(optimalDistanceLength, optimalCurrentDistance, optimalPassengers);
     }
 
-    private ArrayList<Integer> calculateComplexDistance(int agentNumber, List<Integer> currentPassengers) {
+    private OptimalDestination<Integer, Integer, ArrayList<Integer>> calculateComplexDistance
+            (int agentNumber, List<Integer> currentPassengers) {
         int numberOfPassengers = currentPassengers.size();
         String orderArray = "";
         for (Integer currentPassenger : currentPassengers) {
@@ -88,22 +102,20 @@ public class RouteHelper {
         }
 
         int currentDistance = 0;
-        ArrayList<Integer> result = new ArrayList<>();
 
         // Handle the situation when order array is empty (option when all drivers go by themselves)
         if (orderArray.length() == 0) {
             for (Pair<Integer, Integer> route : routes) {
                 currentDistance += distances[route.getF()][route.getS()];
             }
-            result.add(currentDistance);
-            return result;
+            ArrayList<Integer> passengers = new ArrayList<>();
+            return new OptimalDestination<>(currentDistance, 0, passengers);
 
         } else { // If order array is not empty we use calculateDistance function to find optimal route
             // Find all possible options for the transportation of passengers (using the idea of permutations)
             ArrayList<String> allPermutations = permutation(orderArray);
             return calculateDistance(agentNumber, allPermutations);
         }
-
     }
 
     public List<Pair<Integer, Integer>> getRoutes() {
@@ -134,7 +146,7 @@ public class RouteHelper {
     private ArrayList<String> merge(ArrayList<String> list, String c) {
         Set<String> permutations = new HashSet<>();
         ArrayList<String> res = new ArrayList<>();
-        // Loop through all the string in the list
+        // Loop through all the string in1 the list
         for (String s : list) {
             // For each string, insert the last character to all possible positions
             // and add them to the new list
@@ -147,10 +159,13 @@ public class RouteHelper {
         return res;
     }
 
-    private ArrayList<Integer> calculateDistance(int agentNumber, ArrayList<String> allPermutations) {
+    private OptimalDestination<Integer, Integer, ArrayList<Integer>> calculateDistance
+            (int agentNumber, ArrayList<String> allPermutations) {
         int numberOfRoutes = routes.size();
         int optimalDistance = 10000;
         String optimalPermutation = "";
+        int currentComplexDistance = 0;
+        int optimalCurrentDistance = 0;
 
         int departure = routes.get(agentNumber - 1).getF();
         int destination = routes.get(agentNumber - 1).getS();
@@ -178,7 +193,7 @@ public class RouteHelper {
                     checkDeparture[i] = 1;
                 }
             }
-            // For all agents id in current permutation find departure or destination point and find summary route length
+            // For all agents id in1 current permutation find departure or destination point and find summary route length
             for (int i = 0; i < s.length(); i++) {
                 // Find next agent's id according to the current permutation
                 int nextAgentNumber = Integer.parseInt(String.valueOf(s.charAt(i)));
@@ -194,7 +209,7 @@ public class RouteHelper {
                 // Add current distance between nextDeparture and nextDestination to the currentDistance
                 currentDistance += distances[nextDeparture][nextDestination];
                 //System.out.println("Distance between : " + nextDeparture + " and " + nextDestination + " = " +
-                        //distances[nextDeparture][nextDestination]);
+                //distances[nextDeparture][nextDestination]);
                 //System.out.println("Current distance now is: " + currentDistance);
 
                 // Our next departure point is our current destination
@@ -207,12 +222,13 @@ public class RouteHelper {
             complexRoute.add(nextDestination);
             //System.out.println("Next destination: " + nextDestination);
             currentDistance += distances[nextDeparture][nextDestination];
+            currentComplexDistance = currentDistance;
 
             //System.out.println("Distance length with all passengers: " + currentDistance);
             //System.out.println("Distance between them: " + distances[nextDeparture][nextDestination]);
             //System.out.println("Current distance now is: " + currentDistance);
 
-            // We need to add routes of other passengers (not mentioned in current permutation) to our currentDistance
+            // We need to add routes of other passengers (not mentioned in1 current permutation) to our currentDistance
             // (it means that they are going by themselves)
             for (int i = 0; i < numberOfRoutes; i++) {
                 if (checkDeparture[i] == 0) {
@@ -225,9 +241,10 @@ public class RouteHelper {
                 optimalDistance = currentDistance;
                 // If it is better, than set optimalPermutation the value of current permutation
                 optimalPermutation = s;
+                optimalCurrentDistance = currentComplexDistance;
 
                 //System.out.println("New optimal way! Optimal distance now is: " + optimalDistance +
-                       // " and optimal permutation now is " + optimalPermutation);
+                // " and optimal permutation now is " + optimalPermutation);
             }
         }
 
@@ -241,12 +258,12 @@ public class RouteHelper {
         int numberOfPassengers = optimalPermutation.length();
         ArrayList<Integer> passengersList = new ArrayList<>();
         Set<Integer> passengersSet = new HashSet<>();
-        passengersList.add(optimalDistance);
         for (int i = 0; i < numberOfPassengers; i++) {
             passengersSet.add(Integer.parseInt(String.valueOf(optimalPermutation.charAt(i))));
         }
         passengersList.addAll(passengersSet);
 
-        return passengersList;
+        return new OptimalDestination<>(optimalDistance, optimalCurrentDistance, passengersList);
     }
 }
+
