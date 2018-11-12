@@ -1,3 +1,5 @@
+package CarpoolingApp;
+
 public class Map {
     private int citiesAmount;
     private int[][] roadMap = new int[citiesAmount][citiesAmount];

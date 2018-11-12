@@ -1,3 +1,5 @@
+package CarpoolingApp;
+
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
 import jade.wrapper.AgentContainer;
@@ -18,8 +20,11 @@ public class Main {
         AgentContainer container = rt.createMainContainer(p);
 
         // Open file with information about roadMap and driver routes
-        File inputFile = new File("C:/Users/Admin/Anastasia_documents/SPBU/mas/src/main/resources/in2");
+        File inputFile = new File("C:/Users/Admin/Anastasia_documents/SPBU/5sem/mas/src/main/resources/in1");
+        //File inputFile = new File("C:/Users/Admin/Anastasia_documents/SPBU/5sem/mas/src/main/resources/in2");
+        // File inputFile = new File("C:/Users/Admin/Anastasia_documents/SPBU/5sem/mas/src/main/resources/in3");
         try {
+
             Scanner sc = new Scanner(inputFile);
             // Read information about cities and roads
             int numberOfCities = sc.nextInt();
@@ -54,8 +59,9 @@ public class Main {
                 allRoutes.add(new Pair<>(departure, destination));
             }
 
-            // Create RouteHelper for agents
+            // Create CarpoolingApp.RouteHelper for agents
             RouteHelper currentRouteHelper = new RouteHelper(numberOfCities, currentRoadMap, allRoutes, petrolPrice);
+            System.out.println("ROUTES:" + currentRouteHelper.getRoutes());
 
             int agentNumber = 0;
             for (Pair<Integer, Integer> pair: allRoutes) {
@@ -64,28 +70,44 @@ public class Main {
                 int destination = pair.getS();
 
                 // For each driver create an agent with departure and destination attributes
+
                 try {
-                    Object[] agentArgs = new Object[3];
-                    agentArgs[0] = departure;
-                    agentArgs[1] = destination;
-                    agentArgs[2] = currentRouteHelper;
-                    AgentController ag = container.createNewAgent("agent_" + (agentNumber), "DriverAgent", agentArgs);
+
+                    Object[] agentArgs = new Object[4];
+                    agentArgs[0] = agentNumber;
+                    agentArgs[1] = departure;
+                    agentArgs[2] = destination;
+                    agentArgs[3] = currentRouteHelper;
+                    AgentController ag = container.createNewAgent("agent_" + (agentNumber), "CarpoolingApp.MyAgent", agentArgs);
                     ag.start();
 
 
                 } catch (StaleProxyException e) {
                     e.printStackTrace();
                 }
+
             }
-            System.out.println(currentRouteHelper.getRoutes().toString());
+
+            /*
+            ArrayList<Offer> allOffers = new ArrayList<>();
+
+            allOffers.add(new Offer(0, 4, 100, 1));
+            allOffers.add(new Offer(5, 4, 100, 2));
+            allOffers.add(new Offer(2, 3, 100, 4));
+            allOffers.add(new Offer(1, 2, 100, 5));
+
+            //System.out.println(currentRouteHelper.getRoutes().toString());
             int currentAgent = 1;
-            OptimalDestination<Integer, Integer, ArrayList<Integer>> optimalRoute = currentRouteHelper.getOptimalRoute(currentAgent);
+            OptimalDestination<Integer, Integer, ArrayList<Offer>, List<Integer>> optimalRoute =
+                    currentRouteHelper.getOptimalRoute(allOffers, currentAgent);
 
             System.out.println("---------------------------");
-            System.out.println("For passenger with id = " + currentAgent + " best summary route length = "
-                    + optimalRoute.getSummaryRoutesLength() + ", and his complex route length = " + optimalRoute.getCurrentComplexRouteLength() +
-                    " with passengers: " + optimalRoute.getPassengersIdList());
-            System.out.println("---------------------------");
+            System.out.println("For passenger with id = " + currentAgent + " best price = "
+                    + optimalRoute.getSummaryPrice() + ", and his complex route length = " + optimalRoute.getCurrentComplexRouteLength());
+            System.out.println("Best offers for this trip send this agents:" + optimalRoute.getOffersIdList());
+
+            //System.out.println("---------------------------");
+            */
         } catch (FileNotFoundException e) {
             System.out.println("Error! File not found!");
         }
